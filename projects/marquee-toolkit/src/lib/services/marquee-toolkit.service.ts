@@ -47,11 +47,6 @@ export class MarqueeToolkitService {
 		return this.repeatedRenderedArray;
 	}
 
-	public updateRenderedArrayBasedOnIntersection(
-		currentRenderedArray: RenderedImage[],
-		intersecting: Set<ElementWithDataKey>
-	) {}
-
 	private _setArrayValues(
 		initialArray: MarqueeImage[],
 		marqueeItemConfig: { width: number; gutter: number }

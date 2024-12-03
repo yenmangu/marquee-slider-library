@@ -97,7 +97,7 @@ export class MarqueeComponent
 		this._getWrapperWidthWithBuffer();
 		this._setWrapperWidthWithBuffer();
 		this.renderedImages.set(
-			this.marqueeService.initialiseNestedMarqueeArray(this.images, {
+			this.marqueeService.initialiseRenderedArray(this.images, {
 				width: this.width,
 				gutter: this.gutter
 			})
@@ -120,37 +120,38 @@ export class MarqueeComponent
 		console.log('intersecting: ', this.intersectionService.intersecting());
 	}
 
-	private __updateRenderedImages(
-		images: RenderedImage[],
-		intersecting: Set<ElementWithDataKey>
-	): RenderedImage[] {
-		console.log('Invoked _updateRenderedImages');
+	// private __updateRenderedImages(
+	// 	images: RenderedImage[],
+	// 	intersecting: Set<ElementWithDataKey>
+	// ): RenderedImage[] {
+	// 	console.log('Invoked _updateRenderedImages');
 
-		const updatedImages = images.map(arr => [...arr]);
-		intersecting.forEach((element: ElementWithDataKey) => {
-			outerLoop: for (let i = 0; i < updatedImages.length; i++) {
-				console.log('Intersecting: ', element);
-				const array = updatedImages[i];
-				const index = array.findIndex(
-					img =>
-						img.dataKey === element.dataset.key &&
-						img.groupIndex === element.dataset.array
-				);
-				if (index >= 0) {
-					const [shifted] = array.splice(index, 1);
-					updatedImages[updatedImages.length - 1].push(shifted);
-					break outerLoop;
-				}
-			}
-		});
-		return updatedImages;
-	}
+	// 	const updatedImages = images.map(arr => [...arr]);
+	// 	intersecting.forEach((element: ElementWithDataKey) => {
+	// 		outerLoop: for (let i = 0; i < updatedImages.length; i++) {
+	// 			console.log('Intersecting: ', element);
+	// 			const array = updatedImages[i];
+	// 			const index = array.findIndex(
+	// 				img =>
+	// 					img.dataKey === element.dataset.key &&
+	// 					img.groupIndex === element.dataset.array
+	// 			);
+	// 			if (index >= 0) {
+	// 				const [shifted] = array.splice(index, 1);
+	// 				updatedImages[updatedImages.length - 1].push(shifted);
+	// 				break outerLoop;
+	// 			}
+	// 		}
+	// 	});
+	// 	return updatedImages;
+	// }
 
 	private _updateRenderedImages(
 		images: RenderedImage[],
-		intersecting: Set<ElementWithDataKey>
+		intersectingSet: Set<ElementWithDataKey>
 	): RenderedImage[] {
 		const updatedImages: RenderedImage[] = [];
+
 		return updatedImages;
 	}
 
