@@ -1,0 +1,79 @@
+<div
+	#wrapper
+	class="marquee-container container wrapper"
+>
+	<div
+		class="marquee"
+		[style.animation-duration]="speed + 'ms'"
+		[class.reverse]="reverse"
+	>
+		<div
+			*ngFor="let image of updatedImages()"
+			class="marquee-item"
+			[ngStyle]="{
+				'margin-right': gutter + 'px',
+				'width': width + 'px',
+				'height': height + 'px',
+				'border-radius': imageStyle.borderRadius + 'px',
+			}"
+			[attr.data-group]="image?.groupIndex"
+			[attr.data-key]="image?.dataKey"
+		>
+			<img
+				[src]="image.src"
+				[alt]="image.alt"
+				[height]="height"
+				[width]="width"
+				[id]="image.id"
+			/>
+		</div>
+	</div>
+	<div class="controls">
+		<label for="speed"
+			>Animation Duration
+
+			<input
+				type="range"
+				min="1000"
+				max="10000"
+				step="500"
+				[(ngModel)]="speed"
+			/>
+			{{ speed }} ms
+		</label>
+		<label
+			>Gutter Size:
+			<input
+				type="number"
+				[(ngModel)]="gutter"
+				min="0"
+				max="10000"
+				step="1"
+			/>
+			px
+		</label>
+		<label for=""
+			>Square
+			<input
+				type="checkbox"
+				[(ngModel)]="square"
+		/></label>
+		<label>
+			Item Width:
+			<input
+				type="number"
+				[(ngModel)]="width"
+			/>
+		</label>
+		<label for=""
+			>Height:
+			<input
+				type="number"
+				max="10000"
+				[(ngModel)]="height"
+				[disabled]="square"
+			/>
+			px
+		</label>
+	</div>
+</div>
