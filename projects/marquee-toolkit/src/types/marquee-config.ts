@@ -24,12 +24,16 @@ export interface RenderedImage {
 	id: string;
 	groupIndex: string;
 	dataKey: string;
+	dataIntersecting?: boolean;
+	shift?: boolean;
 }
 
 export interface ElementWithDataKey extends HTMLElement {
 	dataset: {
 		key?: string;
 		array?: string;
+		intersecting?: 'true' | 'false';
+		shift?: string;
 		[name: string]: string | undefined;
 	};
 }

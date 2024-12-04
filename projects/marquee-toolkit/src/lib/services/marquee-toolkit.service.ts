@@ -6,62 +6,80 @@ import {
 } from '../../types/marquee-config';
 import { IntersectionObserverService } from './intersection-observer.service';
 
+interface MarqueeItemConfig {
+	width: number;
+	gutter: number;
+}
 @Injectable({
 	providedIn: 'root'
 })
 export class MarqueeToolkitService {
 	public repeatedRenderedArray: RenderedImage[] = [];
-	wrapperWidthPx: number = 0;
-	totalElements: number = 0;
-	arrayWidthPx: number = 0;
+	public _wrapperWidthWithBuffer: number = 0;
+	private _totalElements: number = 0;
+	public _arrayWidthPx: number = 0;
+	public renderedArrayWidthPx!: number;
+	public repeats: number = 0;
 	additionalNeeded: boolean = false;
-	repeatedArrays: HTMLElement[] = [];
+	private _repeatedArrays: HTMLElement[] = [];
 
 	private _intersectingElements = new Set<ElementWithDataKey>();
+	private _currentRepeats: number = 0;
+	private _initialArray: MarqueeImage[] = [];
+	private _marqueeItemConfig!: MarqueeItemConfig;
 	constructor(private intersectionService: IntersectionObserverService) {}
 
 	/**
-	 * Initializes the repeated marquee array by dynamically calculating the number of repetitions
-	 * based on the provided marquee width configuration.
 	 *
-	 * @param {MarqueeImage[]} initialArray - The original array of marquee images to be repeated.
-	 * @param {Object} marqueeItemConfig - Configuration for the marquee dimensions.
-	 * @param {number} marqueeItemConfig.width - The width of each element in the marquee.
-	 * @param {number} marqueeItemConfig.gutter - The gutter between marquee elements.
-	 * @returns {RenderedImage[]} The fully initialized repeated marquee array.
-	 *
-	 * @example
-	 * const initialArray = [{ src: 'img1.jpg'... }, { src: 'img2.jpg'... }];
-	 * const marqueeItemConfig = { width: 200, gutter: 20 };
-	 * const result = initialiseRenderedArray(initialArray, marqueeItemConfig);
-	 * // result contains the repeated array based on the calculated width and repeats.
+	 * @param initialArray
+	 * @param marqueeItemConfig
+	 * @param initialWrapperWidth
 	 */
-	public initialiseRenderedArray(
+	public initialiseArrayValues(
 		initialArray: MarqueeImage[],
-		marqueeItemConfig: { width: number; gutter: number }
-	): RenderedImage[] {
-		this._setArrayValues(initialArray, marqueeItemConfig);
-		const repeats = this._calculateTotalRepeats();
+		marqueeItemConfig: MarqueeItemConfig,
+		initialWrapperWidth: number
+	) {
+		this._initialArray = initialArray;
+		this._totalElements = this._initialArray.length;
+		this._wrapperWidthWithBuffer = initialWrapperWidth;
+		this._marqueeItemConfig = marqueeItemConfig;
+		this._calculateArrayWidthPx();
+		this.renderedArrayWidthPx = this._arrayWidthPx * this.repeats;
+	}
 
-		this.repeatedRenderedArray = this._buildRepeatedArray(initialArray, repeats);
+	public updateWidth(_wrapperWidthWithBuffer: number) {
+		console.log(
+			'Updating width in service from:',
+			this._wrapperWidthWithBuffer,
+			'to: ',
+			_wrapperWidthWithBuffer
+		);
+		this._wrapperWidthWithBuffer = _wrapperWidthWithBuffer;
+	}
+
+	public updateRenderedArray(): RenderedImage[] {
+		console.log('Invoking update rendered array');
+
+		const newRepeats = this._calculateTotalRepeats();
+
+		const newRenderedArray = this._buildRepeatedArray(
+			this._initialArray,
+			newRepeats
+		);
+		this.repeatedRenderedArray =
+			newRenderedArray.length !== this.repeatedRenderedArray.length
+				? newRenderedArray
+				: this.repeatedRenderedArray;
 		return this.repeatedRenderedArray;
 	}
 
-	private _setArrayValues(
-		initialArray: MarqueeImage[],
-		marqueeItemConfig: { width: number; gutter: number }
-	) {
-		const { width, gutter } = marqueeItemConfig;
-		this.totalElements = initialArray.length;
-		this._calculateArrayWidthPx(this.totalElements, width, gutter);
-	}
-
 	private _calculateTotalRepeats(): number {
-		// totalSize = wrapperWidth * 1.2 (20% buffer)
-
 		const totalArraysNeeded: number = Math.ceil(
-			(this.wrapperWidthPx * 1.2) / this.arrayWidthPx
+			this._wrapperWidthWithBuffer / this._arrayWidthPx
 		);
+		this.repeats = totalArraysNeeded;
+		this.renderedArrayWidthPx = this._arrayWidthPx * this.repeats;
 
 		return totalArraysNeeded;
 	}
@@ -114,40 +132,15 @@ export class MarqueeToolkitService {
 		return repeatedArray;
 	}
 
-	// private _buildRepeatedArray(
-	// 	initialArray: MarqueeImage[],
-	// 	currentRepeatIndex: number
-	// ): RenderedImage[] {
-	// 	const renderedArray: RenderedImage[] = [];
-	// 	initialArray.forEach((item, index) => {
-	// 		renderedArray.push({
-	// 			...item,
-	// 			id: `index${index}`,
-	// 			groupIndex: `${currentRepeatIndex}`,
-	// 			dataKey: `${currentRepeatIndex}_${index}`
-	// 		});
-	// 	});
-	// 	return renderedArray;
-	// }
-
 	private _determineAdditionalArrays() {
-		const arrayPlusBufferWidth = this.arrayWidthPx * 1.2;
-		if (this.wrapperWidthPx - arrayPlusBufferWidth < 0) {
+		const arrayPlusBufferWidth = this._arrayWidthPx * 1.2;
+		if (this._wrapperWidthWithBuffer - arrayPlusBufferWidth < 0) {
 			this.additionalNeeded = true;
 		}
 	}
 
-	// repeatArray(): void {}
-
-	private _calculateArrayWidthPx(
-		totalEl: number,
-		elWidth: number,
-		gutter: number
-	): void {
-		this.arrayWidthPx = totalEl * (elWidth + gutter);
+	private _calculateArrayWidthPx(): void {
+		const { width, gutter } = this._marqueeItemConfig;
+		this._arrayWidthPx = this._totalElements * (width + gutter);
 	}
-
-	// getStartX(): number {}
-
-	// getFinishX(): number {}
 }

@@ -21,27 +21,43 @@ export class IntersectionObserverService {
 	}
 
 	private _defaultCallback(
-		entries: IntersectionObserverEntry[],
-		oberserver: IntersectionObserver
+		[entry]: IntersectionObserverEntry[],
+		// entries: IntersectionObserverEntry[],
+		observer: IntersectionObserver
 	): void {
-		console.log('Invoked default callback');
+		// console.log('Invoked default callback');
 
-		entries.forEach(entry => {
-			const target = entry.target as ElementWithDataKey;
-			console.log('target: ', target);
+		const target = entry.target as ElementWithDataKey;
+		const intersecting = new Set(this.intersectingElements());
+		if (!target.dataset.key) {
+			console.error('Observed element is missing data-key attribute', target);
+		}
+		if (entry.isIntersecting) {
+			intersecting.add(target);
+			target.dataset.intersecting = 'true';
+		} else {
+			intersecting.delete(target);
+			target.dataset.intersecting = 'false';
+		}
+		this.intersectingElements.set(intersecting);
 
-			if (!target.dataset.key) {
-				console.error('Observed element is missing data-key attribute', target);
-			}
-			const intersecting = new Set(this.intersectingElements());
-			if (entry.isIntersecting) {
-				intersecting.add(target);
-			} else {
-				intersecting.delete(target);
-			}
-			this.intersectingElements.set(intersecting);
-		});
-		console.log('Updated intersecting elements:', this.intersectingElements());
+		// entries.forEach(entry => {
+		// 	const target = entry.target as ElementWithDataKey;
+		// 	// console.log('target: ', target);
+
+		// 	if (!target.dataset.key) {
+		// 		console.error('Observed element is missing data-key attribute', target);
+		// 	}
+		// 	const intersecting = new Set(this.intersectingElements());
+		// 	if (entry.isIntersecting) {
+		// 		intersecting.add(target);
+		// 		target.dataset.intersecting = 'true';
+		// 	} else {
+		// 		intersecting.delete(target);
+		// 		target.dataset.intersecting = 'false';
+		// 	}
+		// 	this.intersectingElements.set(intersecting);
+		// });
 	}
 
 	public setupIntersectionObserver(customCallback?: IntersectionObserverCallback) {
@@ -61,7 +77,7 @@ export class IntersectionObserverService {
 		const combinedCallback: IntersectionObserverCallback = (entries, observer) => {
 			//
 			// Always execute default callback first
-			console.log('Intersection Observer Triggered', entries); // Log to ensure it's being triggered
+			// console.log('Intersection Observer Triggered', entries); // Log to ensure it's being triggered
 
 			this._defaultCallback(entries, observer);
 
@@ -78,7 +94,7 @@ export class IntersectionObserverService {
 			throw new Error('IntersectionObserver not set up.');
 		}
 		elements.forEach((el: ElementWithDataKey) => {
-			console.log('observed element: ', el);
+			// console.log('observed element: ', el);
 
 			this.observer?.observe(el);
 		});

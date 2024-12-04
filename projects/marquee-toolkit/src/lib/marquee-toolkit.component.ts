@@ -9,7 +9,7 @@ import { SAMPLE_IMAGES } from '../data/sample-images';
 	template: `
 		<mt-marquee-internal
 			[images]="images"
-			[speed]="marqueeConfig.speed || 6000"
+			[speed]="marqueeConfig.speed || 16000"
 			[gutter]="marqueeConfig.gutter || 20"
 			[reverse]="marqueeConfig.reverse || false"
 			[width]="marqueeConfig.width || 100"
@@ -18,11 +18,11 @@ import { SAMPLE_IMAGES } from '../data/sample-images';
 		>
 		</mt-marquee-internal>
 	`,
-	styles: ``
+	styleUrl: './marquee-toolkit.component.css'
 })
 export class MarqueeToolkitComponent {
 	@Input() marqueeConfig: MarqueeConfig = {
-		speed: 6000,
+		speed: 14300,
 		height: 100,
 		width: 100,
 		gutter: 20,

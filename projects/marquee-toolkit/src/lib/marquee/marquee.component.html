@@ -8,7 +8,8 @@
 		[class.reverse]="reverse"
 	>
 		<div
-			*ngFor="let image of updatedImages()"
+			#marqueeItem
+			*ngFor="let image of renderedImages"
 			class="marquee-item"
 			[ngStyle]="{
 				'margin-right': gutter + 'px',
@@ -18,15 +19,28 @@
 			}"
 			[attr.data-group]="image?.groupIndex"
 			[attr.data-key]="image?.dataKey"
+			[attr.data-intersecting]="image?.dataIntersecting || 'false'"
 		>
 			<img
-				[src]="image.src"
-				[alt]="image.alt"
+				[src]="image?.src"
+				[alt]="image?.alt"
 				[height]="height"
 				[width]="width"
-				[id]="image.id"
+				[id]="image?.id"
 			/>
 		</div>
+	</div>
+</div>
+<div class="dev">
+	<div class="values">
+		<span>Wrapper width: {{ _wrapperWidthWithBuffer }}</span>
+		<span
+			>Wrapper width in service: {{ marqueeService._wrapperWidthWithBuffer }}</span
+		>
+		<span>Array Length: {{ renderedImages.length }}</span>
+		<span>Array Width in px: {{ marqueeService._arrayWidthPx }}</span>
+		<span>Rendered Array Width: {{ marqueeService.renderedArrayWidthPx }}</span>
+		<span>Repeats: {{ marqueeService.repeats }}</span>
 	</div>
 	<div class="controls">
 		<label for="speed"
@@ -35,8 +49,8 @@
 			<input
 				type="range"
 				min="1000"
-				max="10000"
-				step="500"
+				max="20000"
+				step="100"
 				[(ngModel)]="speed"
 			/>
 			{{ speed }} ms
@@ -74,6 +88,9 @@
 				[disabled]="square"
 			/>
 			px
+		</label>
+		<label for="">
+			<button (click)="pause()">{{ pauseText }}</button>
 		</label>
 	</div>
 </div>
