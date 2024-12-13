@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import {
-	ElementWithDataKey,
+	ImageWithDataKey,
 	MarqueeImage,
 	RenderedImage
 } from '../../types/marquee-config';
@@ -23,7 +23,7 @@ export class MarqueeToolkitService {
 	additionalNeeded: boolean = false;
 	private _repeatedArrays: HTMLElement[] = [];
 
-	private _intersectingElements = new Set<ElementWithDataKey>();
+	private _intersectingElements = new Set<ImageWithDataKey>();
 	private _currentRepeats: number = 0;
 	private _initialArray: MarqueeImage[] = [];
 	private _marqueeItemConfig!: MarqueeItemConfig;

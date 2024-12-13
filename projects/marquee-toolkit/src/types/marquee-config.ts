@@ -1,7 +1,7 @@
 export interface MarqueeConfig {
-	speed?: number;
-	height?: number;
-	width?: number;
+	scrollSpeed?: number;
+	containerHeight?: number;
+	imageWidth?: number;
 	gutter?: number;
 	reverse?: boolean;
 }
@@ -28,7 +28,7 @@ export interface RenderedImage {
 	shift?: boolean;
 }
 
-export interface ElementWithDataKey extends HTMLElement {
+export interface ImageWithDataKey extends HTMLImageElement {
 	dataset: {
 		key?: string;
 		array?: string;

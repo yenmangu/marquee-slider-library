@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { ElementWithDataKey } from '../../public-api';
+import { ImageWithDataKey } from '../../public-api';
 
 @Injectable({
 	providedIn: 'root'
@@ -9,11 +9,11 @@ export class IntersectionObserverService {
 	public wrapperElement: Element | null = null;
 
 	private _customCallback: IntersectionObserverCallback | null = null;
-	private intersectingElements = signal<Set<ElementWithDataKey>>(new Set());
+	private intersectingElements = signal<Set<ImageWithDataKey>>(new Set());
 
 	private observer: IntersectionObserver | null = null;
 	constructor() {
-		this._setupIntersectionObserver();
+		// this._setupIntersectionObserver();
 	}
 
 	get intersecting() {
@@ -27,7 +27,7 @@ export class IntersectionObserverService {
 	): void {
 		// console.log('Invoked default callback');
 
-		const target = entry.target as ElementWithDataKey;
+		const target = entry.target as ImageWithDataKey;
 		const intersecting = new Set(this.intersectingElements());
 		if (!target.dataset.key) {
 			console.error('Observed element is missing data-key attribute', target);
@@ -42,7 +42,7 @@ export class IntersectionObserverService {
 		this.intersectingElements.set(intersecting);
 
 		// entries.forEach(entry => {
-		// 	const target = entry.target as ElementWithDataKey;
+		// 	const target = entry.target as ImageWithDataKey;
 		// 	// console.log('target: ', target);
 
 		// 	if (!target.dataset.key) {
@@ -89,11 +89,11 @@ export class IntersectionObserverService {
 		this.observer = new IntersectionObserver(combinedCallback, options);
 	}
 
-	public observeElements(elements: ElementWithDataKey[]): void {
+	public observeElements(elements: ImageWithDataKey[]): void {
 		if (!this.observer) {
 			throw new Error('IntersectionObserver not set up.');
 		}
-		elements.forEach((el: ElementWithDataKey) => {
+		elements.forEach((el: ImageWithDataKey) => {
 			// console.log('observed element: ', el);
 
 			this.observer?.observe(el);

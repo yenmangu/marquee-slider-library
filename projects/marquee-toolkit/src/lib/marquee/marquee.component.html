@@ -1,59 +1,22 @@
-<div
-	#wrapper
-	class="marquee-container container wrapper"
->
+<ng-container *ngIf="images">
 	<div
-		class="marquee"
-		[style.animation-duration]="speed + 'ms'"
-		[class.reverse]="reverse"
-	>
-		<div
-			#marqueeItem
-			*ngFor="let image of renderedImages"
-			class="marquee-item"
-			[ngStyle]="{
-				'margin-right': gutter + 'px',
-				'width': width + 'px',
-				'height': height + 'px',
-				'border-radius': imageStyle.borderRadius + 'px',
-			}"
-			[attr.data-group]="image?.groupIndex"
-			[attr.data-key]="image?.dataKey"
-			[attr.data-intersecting]="image?.dataIntersecting || 'false'"
-		>
-			<img
-				[src]="image?.src"
-				[alt]="image?.alt"
-				[height]="height"
-				[width]="width"
-				[id]="image?.id"
-			/>
-		</div>
-	</div>
-</div>
+		#marqueeContainer
+		class="marquee-container container wrapper"
+	></div>
+</ng-container>
 <div class="dev">
-	<div class="values">
-		<span>Wrapper width: {{ _wrapperWidthWithBuffer }}</span>
-		<span
-			>Wrapper width in service: {{ marqueeService._wrapperWidthWithBuffer }}</span
-		>
-		<span>Array Length: {{ renderedImages.length }}</span>
-		<span>Array Width in px: {{ marqueeService._arrayWidthPx }}</span>
-		<span>Rendered Array Width: {{ marqueeService.renderedArrayWidthPx }}</span>
-		<span>Repeats: {{ marqueeService.repeats }}</span>
-	</div>
+	<div class="values"></div>
 	<div class="controls">
-		<label for="speed"
-			>Animation Duration
-
+		<label for="scrollSpeed"
+			>Scroll Speed
 			<input
 				type="range"
-				min="1000"
-				max="20000"
-				step="100"
-				[(ngModel)]="speed"
+				min="1"
+				max="20"
+				step="1"
+				[(ngModel)]="scrollSpeed"
 			/>
-			{{ speed }} ms
+			{{ scrollSpeed }} px per frame
 		</label>
 		<label
 			>Gutter Size:
@@ -76,7 +39,7 @@
 			Item Width:
 			<input
 				type="number"
-				[(ngModel)]="width"
+				[(ngModel)]="imageWidth"
 			/>
 		</label>
 		<label for=""
@@ -84,13 +47,20 @@
 			<input
 				type="number"
 				max="10000"
-				[(ngModel)]="height"
+				[(ngModel)]="containerHeight"
 				[disabled]="square"
 			/>
 			px
 		</label>
 		<label for="">
-			<button (click)="pause()">{{ pauseText }}</button>
+			<button (click)="toggleDirection()">
+				{{ reverse ? 'Reversed' : 'Forward' }}
+			</button>
+		</label>
+		<label for="">
+			<button (click)="devToggelePause()">
+				{{ isPaused ? 'Play' : 'Pause' }}
+			</button>
 		</label>
 	</div>
 </div>

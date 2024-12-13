@@ -9,25 +9,29 @@ import { SAMPLE_IMAGES } from '../data/sample-images';
 	template: `
 		<mt-marquee-internal
 			[images]="images"
-			[speed]="marqueeConfig.speed || 16000"
+			[scrollSpeed]="marqueeConfig.scrollSpeed || 10"
 			[gutter]="marqueeConfig.gutter || 20"
 			[reverse]="marqueeConfig.reverse || false"
-			[width]="marqueeConfig.width || 100"
-			[height]="marqueeConfig.height || 100"
+			[imageWidth]="marqueeConfig.imageWidth || 100"
+			[containerHeight]="marqueeConfig.containerHeight || 100"
 			[imageStyle]="imageStyle"
 		>
 		</mt-marquee-internal>
 	`,
 	styleUrl: './marquee-toolkit.component.css'
 })
-export class MarqueeToolkitComponent {
+export class MarqueeToolkitComponent implements OnInit {
 	@Input() marqueeConfig: MarqueeConfig = {
-		speed: 14300,
-		height: 100,
-		width: 100,
+		scrollSpeed: 2,
+		containerHeight: 100,
+		imageWidth: 100,
 		gutter: 20,
 		reverse: false
 	};
 	@Input() imageStyle: ImageStyle = { borderRadius: 20 };
 	@Input() images: MarqueeImage[] = SAMPLE_IMAGES;
+
+	ngOnInit(): void {
+		console.log('images in array: ', this.images);
+	}
 }

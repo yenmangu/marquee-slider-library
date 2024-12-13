@@ -16,16 +16,20 @@ export class AppComponent implements OnInit {
 	public SampleImageArray: MarqueeImage[] = [];
 	public arrayLength: number = 6;
 	private _imageSize: number = 300;
-	constructor(private marqueeService: MarqueeToolkitService) {}
+	private _badIds: number[] = [86, 97];
 	title = 'test-app';
 
 	ngOnInit(): void {
 		this._initialiseTestArray();
 	}
 	private _initialiseTestArray() {
+		let numArray: number[] = [];
 		for (let i = 0; i < this.arrayLength; i++) {
 			let id = Math.floor(Math.random() * 100);
-			id = id !== 86 ? id : Math.floor(Math.random() * 100);
+			if (numArray.includes(id)) {
+				id = !this._badIds.includes(id) ? id : Math.floor(Math.random() * 100);
+			}
+			numArray.push(id);
 			const entry: MarqueeImage = {
 				src: `https://picsum.photos/id/${id}/${this._imageSize}`,
 				alt: `sample alt text_${id}`

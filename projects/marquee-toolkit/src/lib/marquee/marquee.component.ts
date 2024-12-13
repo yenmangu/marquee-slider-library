@@ -1,35 +1,24 @@
 import {
 	Component,
-	EventEmitter,
 	Input,
-	OnChanges,
 	OnInit,
-	Output,
 	OnDestroy,
-	SimpleChanges,
 	ElementRef,
 	ViewChild,
 	Renderer2,
 	AfterViewInit,
-	AfterContentInit,
-	ChangeDetectorRef,
-	computed,
-	signal,
-	ViewChildren,
-	QueryList
+	ChangeDetectorRef
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MarqueeToolkitService } from '../services/marquee-toolkit.service';
-import { IntersectionObserverService } from '../services/intersection-observer.service';
 import { SAMPLE_IMAGES } from '../../data/sample-images';
 import {
 	MarqueeImage,
 	ImageStyle,
 	RenderedImage,
-	ElementWithDataKey
+	ImageWithDataKey
 } from '../../types/marquee-config';
-import { findIndex, Subject, Subscription, takeUntil } from 'rxjs';
+import { MarqueeImageDirective } from '../marquee-image.directive';
 
 @Component({
 	selector: 'mt-marquee-internal',
@@ -37,315 +26,279 @@ import { findIndex, Subject, Subscription, takeUntil } from 'rxjs';
 	templateUrl: './marquee.component.html',
 	styleUrl: './marquee.component.css'
 })
-export class MarqueeComponent
-	implements OnInit, AfterViewInit, OnChanges, OnDestroy
-{
-	@ViewChild('wrapper', { static: false }) wrapper!: ElementRef;
-	@ViewChild('marquee', { static: false }) marquee!: ElementRef;
-	@ViewChildren('marqueeItem', { read: ElementRef })
-	marqueeItems!: QueryList<ElementRef>;
-	public square: boolean = true;
-	// public renderedImages = signal<RenderedImage[]>([]);
-	public renderedImages: RenderedImage[] = [];
-	public pauseText: 'play' | 'pause' = 'pause';
-	private _paused: boolean = false;
-
-	public updatedImages: RenderedImage[] = [];
-
-	public itemList: ElementWithDataKey[] = [];
-
-	// public updatedImages = computed(() => {
-	// 	const intersecting = this.intersectionService.intersecting();
-	// 	const currentImages = this.renderedImages().length
-	// 		? [...this.renderedImages()]
-	// 		: [];
-	// 	return this._updateRenderedImages(currentImages, intersecting);
-	// });
+export class MarqueeComponent implements OnInit, AfterViewInit, OnDestroy {
+	@ViewChild('marqueeContainer', { static: false }) marqueeContainer!: ElementRef;
 
 	@Input() images: MarqueeImage[] = SAMPLE_IMAGES;
-	@Input() height!: number;
-	@Input() width!: number;
+	@Input() containerHeight!: number;
+	@Input() imageWidth!: number;
 	@Input() gutter!: number;
-	@Input() speed!: number;
+	@Input() scrollSpeed!: number;
 	@Input() reverse!: boolean;
 	@Input() imageStyle!: ImageStyle;
 	@Input() usingSample!: boolean;
 
+	public marqueeImages: ImageWithDataKey[] = [];
+	public square: boolean = true;
+	public isPaused: boolean = false;
+
+	private _container!: HTMLElement;
+	private _containerWidthWithBuffer!: number;
+
 	private _resizeObserver!: ResizeObserver;
+	private _timeoutId: any;
+	private _animationFrameId: any;
+	private _arrayWidthPx!: number;
+	private _repeats!: number;
+	private _totalItems!: number;
+	private _renderedArray!: RenderedImage[];
+	private _currentSpeed!: number;
 
-	private _colors = ['#f38630', '#6fb936', '#ccc', '#6fb936'];
-	private _observer: IntersectionObserver | null = null;
-	private _subscription: Subscription | null = null;
-	private _destroy$ = new Subject<void>();
-	_wrapperWidthWithBuffer!: number;
-	private _currentIntersecting: Set<ElementWithDataKey> = new Set();
-
-	/**
-	 * @description
-	 * The threshold percentage (as a decimal) for when the image is considered "in view".
-	 * Value should be between 0 and 1
-	 */
-	@Input()
-	intersectionThreshold: number = 0.5;
-
-	@Output() ImageInView = new EventEmitter<{
-		image: MarqueeImage;
-		inView: Boolean;
-	}>();
-
-	private _intersectionObserver: IntersectionObserver | null = null;
-	private _buffer: number = 1.2;
-
-	constructor(
-		public marqueeService: MarqueeToolkitService,
-		private renderer: Renderer2,
-		private cdr: ChangeDetectorRef
-	) {}
+	constructor(private renderer: Renderer2, private cdr: ChangeDetectorRef) {}
 
 	ngOnInit(): void {
 		if (this.square) {
-			this.height = this.width;
+			this.containerHeight = this.imageWidth;
 		}
+		this._currentSpeed = this.scrollSpeed;
 	}
 
 	ngAfterViewInit(): void {
-		this._readAndSetWrapperWidth();
-		this.marqueeService.initialiseArrayValues(
-			this.images,
-			{
-				width: this.width,
-				gutter: this.gutter
-			},
-			this._wrapperWidthWithBuffer
-		);
-		this._updateMarquee();
+		this._readAndSetContainerWidth();
+		this._measureArrayWidthPx();
+		this._initMarquee();
 
-		this.marqueeItems.changes.subscribe(() => {
-			const elements = this._getElementsToObserve(this.marqueeItems);
-			console.log('Elements: ', elements);
-			this._setupIntersectionObserver(elements);
-		});
-		// always here
+		if (this._container) {
+			this._animate();
+		}
 		this.cdr.detectChanges();
 	}
 
-	// private _getMarqueeItemChanges() {
-	// 	let itemList: ElementWithDataKey[];
-	// 	this.marqueeItems.changes.subscribe((items: QueryList<ElementRef>) => {
-	// 		itemList = this._getElementsToObserve(items);
-	// 	});
-	// }
-
-	private _getElementsToObserve(
-		items: QueryList<ElementRef>
-	): ElementWithDataKey[] {
-		console.log('Elements to observe invoked');
-		const array: ElementWithDataKey[] = [];
-		items.forEach(item => {
-			const element = item.nativeElement as ElementWithDataKey;
-			array.push(element);
-		});
-
-		return array;
-	}
-
-	// private _setupIntersectionObserver(elementsToObserve: ElementWithDataKey[]) {
-	// 	// const elementsToObserve = Array.from(
-	// 	// 	document.querySelectorAll('.marquee-item')
-	// 	// ) as ElementWithDataKey[];
-	// 	this._intersectionObserver = new IntersectionObserver(
-	// 		([entry]: IntersectionObserverEntry[]) => {
-	// 			const target = entry.target as ElementWithDataKey;
-	// 			const foundRendered = this._findRenderedImage(target);
-	// 			if (entry.isIntersecting) {
-	// 				console.log('Intersecting');
-	// 				console.log('Entry: ', entry);
-
-	// 				this._currentIntersecting.add(target);
-	// 				this._flagAsIntersecting(target, foundRendered, true);
-	// 			}
-	// 			if (!entry.isIntersecting) {
-	// 				this._currentIntersecting.delete(target);
-	// 				this._flagAsIntersecting(target, foundRendered, false);
-	// 			}
-	// 			this._updateRenderedImages(foundRendered);
-	// 		},
-	// 		{ threshold: 0.1, root: null },
-
-	// 	);
-	// 	elementsToObserve.forEach(el => {
-	// 		if (this._intersectionObserver) {
-	// 			this._intersectionObserver.observe(el);
-	// 		}
-	// 	});
-	// }
-
-	private _setupIntersectionObserver(elementsToObserve: ElementWithDataKey[]) {
-		console.log(
-			'Elements to observe in setupIntersectionObserver: ',
-			elementsToObserve
-		);
-
-		this._intersectionObserver = new IntersectionObserver(
-			this._handleIntersection.bind(this),
-			{
-				threshold: 0.9,
-				root: null
-			}
-		);
-
-		elementsToObserve.forEach(el => {
-			if (this._intersectionObserver) {
-				this._intersectionObserver.observe(el);
-			}
-		});
-		// throw new Error('Method not implemented.');
-	}
-
-	private _handleIntersection([entry]: IntersectionObserverEntry[]) {
-		const target = entry.target as ElementWithDataKey;
-		const foundRendered = this._findRenderedImage(target);
-		if (entry.isIntersecting) {
-			if (target.dataset.intersecting === 'false') {
-				console.log('target entering intersection area');
-				this._onIntersecting(target);
-				this._flagIntersection(target, foundRendered, true);
-				// add target specific
-			}
-		} else {
-			if (target.dataset.intersecting === 'true') {
-				console.log('Target leaving intersection area');
-				this._intersectingFinished(target);
-				this._flagIntersection(target, foundRendered, false);
-				this._updateRenderedImages(foundRendered);
-			}
-			// add target specific
+	private _initMarquee() {
+		this._container = this._initContainer();
+		if (this._container) {
+			this._repeats = this._calculateRepeats(this._arrayWidthPx);
+			const renderedArray = this._buildRepeatedArray(this._repeats);
+			this._updateImages(this._container, renderedArray);
+			this._renderedArray = renderedArray;
 		}
 	}
-	private _findPreviousIndex() {
-		throw new Error('Method not implemented.');
-	}
-	private _handleItemShift() {}
 
-	private _onIntersecting(entryTarget: ElementWithDataKey) {
-		// console.log('Entry intersecting: ', entryTarget);
-		this._currentIntersecting.add(entryTarget);
-	}
-
-	private _intersectingFinished(entryTarget: ElementWithDataKey) {
-		console.log(entryTarget, ' finished intersecting');
-		this._currentIntersecting.delete(entryTarget);
+	private _initContainer(): HTMLElement {
+		const container = this.marqueeContainer.nativeElement as HTMLElement;
+		this.renderer.setStyle(container, 'position', 'relative');
+		this.renderer.setStyle(container, 'height', `${this.containerHeight}px`);
+		this.renderer.setStyle(container, 'overflow', 'hidden');
+		return container;
 	}
 
-	private _flagIntersection(
-		target: ElementWithDataKey,
-		marqueeItem: RenderedImage,
-		intersecting: boolean
-	) {
-		const intersectingText = intersecting ? 'true' : 'false';
-		target.dataset.intersecting = intersectingText;
-		marqueeItem.dataIntersecting = intersecting;
+	private _updateImages(container: HTMLElement, renderedImages: RenderedImage[]) {
+		this._clearContainer(container);
+		this.marqueeImages = [];
+		renderedImages.forEach((src, index) => {
+			const gutter = index === 0 ? 0 : this.gutter;
+			console.log('Gutter: ', gutter);
+			const imagePositionX = (this.imageWidth + gutter) * index;
+			const image = this._initSingleImage(src, imagePositionX);
+			this.renderer.appendChild(container, image);
+			this.marqueeImages.push(image);
+		});
 	}
 
-	private _findRenderedImage(target: ElementWithDataKey): RenderedImage {
-		const found = this.renderedImages.find(
-			image => image.dataKey === target.dataset.key
-		);
-		if (found) {
-			return found;
-		}
-		throw new Error('Error finding matching DOM Node');
+	private _measureArrayWidthPx() {
+		this._arrayWidthPx = (this.imageWidth + this.gutter) * this.images.length;
 	}
 
-	private _updateRenderedImages(marqueeItem: RenderedImage): void {
-		console.log('updateRenderedImages invoked');
-
-		const index = this.renderedImages.indexOf(marqueeItem);
-		const previousIndex =
-			(index - 1 + this.renderedImages.length) % this.renderedImages.length;
-		this._shiftPreviousToEnd(previousIndex);
+	private _initSingleImage(
+		src: RenderedImage,
+		imagePositionX: number
+	): ImageWithDataKey {
+		const image: ImageWithDataKey = this.renderer.createElement('img');
+		this.renderer.addClass(image, 'marquee-item');
+		this.renderer.setStyle(image, 'position', 'absolute');
+		this.renderer.setStyle(image, 'left', `${imagePositionX}px`);
+		this.renderer.setStyle(image, 'width', `${this.imageWidth}px`);
+		this.renderer.setStyle(image, 'height', `${this.containerHeight}px`);
+		this.renderer.setAttribute(image, 'src', `${src.src}`);
+		this.renderer.setAttribute(image, 'alt', `${src.alt}`);
+		this.renderer.setAttribute(image, 'data-key', `${src.dataKey}`);
+		this.renderer.setAttribute(image, 'data-array', `${src.groupIndex}`);
+		this.renderer.listen(image, 'mouseenter', () => {
+			this.togglePause(true);
+		});
+		this.renderer.listen(image, 'mouseleave', () => {
+			this.togglePause(false);
+		});
+		return image;
 	}
 
-	private _shiftPreviousToEnd(previousIndex: number): void {
-		const splicedImage = this.renderedImages.slice(previousIndex, 1)[0];
-		this.renderedImages.push(splicedImage);
-		this.cdr.detectChanges();
+	private _applyWidthValue(width: number): number {
+		return width * 1.2;
 	}
 
-	ngOnChanges(changes: SimpleChanges): void {}
-
-	private _readAndSetWrapperWidth(): void {
+	private _readAndSetContainerWidth() {
 		let observedWidthValue: number;
-		const wrapperElement = this.wrapper?.nativeElement as HTMLElement;
-		if (!wrapperElement) {
+		const container = this.marqueeContainer?.nativeElement as HTMLElement;
+		if (!container) {
 			console.log('Error');
 			throw new Error('Error obtaining wrapper element ref');
 		}
-		observedWidthValue = wrapperElement.getBoundingClientRect().width;
-		observedWidthValue = this._applyWidthBuffer(observedWidthValue);
+		observedWidthValue = container.getBoundingClientRect().width;
+		observedWidthValue = this._applyWidthValue(observedWidthValue);
 		this._updateWidthValue(observedWidthValue);
-		this._observeWrapperWidthChanges(wrapperElement);
+		this._observeContainerWidthChanges(container);
 	}
 
-	private _observeWrapperWidthChanges(wrapperElement: HTMLElement) {
+	private _updateRenderedArray() {
+		const newRepeats = this._calculateRepeats(this._arrayWidthPx);
+		const newLength = newRepeats * this.images.length;
+		if (this._totalItems === newLength) {
+			return this._renderedArray;
+		} else {
+			this._repeats = newRepeats;
+			const newRenderedArray = this._buildRepeatedArray(this._repeats);
+			return newRenderedArray;
+		}
+	}
+
+	private _buildRepeatedArray(totalRepeats: number) {
+		const repeatedArray: RenderedImage[] = [];
+		const arrayLength = this.images.length;
+		this._totalItems = arrayLength * totalRepeats;
+		for (let index = 0; index < this._totalItems; index++) {
+			const arrayIndex = Math.floor(index / arrayLength);
+			const itemIndex = index % arrayLength;
+			const item = this.images[itemIndex];
+			repeatedArray.push({
+				...item,
+				id: `index_${index}`,
+				groupIndex: `${arrayIndex}`,
+				dataKey: `${arrayIndex}_${itemIndex}`
+			});
+		}
+		return repeatedArray;
+	}
+
+	private _calculateRepeats(arrayWidthPx: number) {
+		const totalArraysNeeded = Math.ceil(
+			this._containerWidthWithBuffer / arrayWidthPx
+		);
+		return totalArraysNeeded;
+	}
+
+	private _animate() {
+		// if (!this.isPaused) {
+		// }
+		this._scrollImages();
+		this._animationFrameId = requestAnimationFrame(() => this._animate());
+	}
+
+	private _scrollImages() {
+		const targetSpeed = this.isPaused ? 0 : this.scrollSpeed;
+		this._currentSpeed += (targetSpeed - this._currentSpeed) * 0.1;
+		this.marqueeImages.forEach((image, index) => {
+			const gutter = this.gutter;
+
+			const currentLeft = this._getImageLeftPos(image);
+
+			const newLeft = this.reverse
+				? currentLeft + this._currentSpeed
+				: currentLeft - this._currentSpeed;
+
+			this._setNewImageLeft(image, newLeft);
+
+			if (this.reverse) {
+				if (currentLeft > this._containerWidthWithBuffer) {
+					const shiftedImage = this.marqueeImages.pop();
+					if (shiftedImage) {
+						const firstImage = this.marqueeImages[0];
+						const firstImageLeft = this._getImageLeftPos(firstImage);
+						const resetLeft = firstImageLeft - this.imageWidth - gutter;
+
+						this._setNewImageLeft(shiftedImage, resetLeft);
+						this.marqueeImages.unshift(shiftedImage);
+					}
+				}
+			} else {
+				if (currentLeft + this.imageWidth + gutter < 0) {
+					const shiftedImage = this.marqueeImages.shift();
+					if (shiftedImage) {
+						const lastImage = this.marqueeImages[this.marqueeImages.length - 1];
+						const lastImageLeft = this._getImageLeftPos(lastImage);
+						const resetLeft = lastImageLeft + this.imageWidth + gutter;
+
+						this._setNewImageLeft(shiftedImage, resetLeft);
+						this.marqueeImages.push(shiftedImage);
+					}
+				}
+			}
+		});
+	}
+
+	private _setNewImageLeft(image: ImageWithDataKey, left: number) {
+		this.renderer.setStyle(image, 'left', `${left}px`);
+	}
+
+	private _getImageLeftPos(image: ImageWithDataKey): number {
+		return parseInt(image.style.left, 10) || 0;
+	}
+
+	private _observeContainerWidthChanges(container: HTMLElement) {
 		if (this._resizeObserver) {
 			this._resizeObserver.disconnect();
 		}
 		let resizeTimeout: any;
+
 		this._resizeObserver = new ResizeObserver(([entry]) => {
 			clearTimeout(resizeTimeout);
 			resizeTimeout = setTimeout(() => {
 				try {
-					const observedWidthValue = this._applyWidthBuffer(
-						entry.contentRect.width
-					);
-					this._updateWidthValue(observedWidthValue);
+					const widthWithBuffer = this._applyWidthValue(entry.contentRect.width);
+					this._updateWidthValue(widthWithBuffer);
+					this._updateMarquee();
 				} catch (error) {
 					console.error('Error observing wrapper width changes: ', error);
 				}
 			}, 50);
 		});
-		this._resizeObserver.observe(wrapperElement);
-	}
-
-	private _applyWidthBuffer(observedWidth: number): number {
-		return observedWidth * this._buffer;
-	}
-
-	private _updateWidthValue(observedWidthWithBuffer: number) {
-		if (observedWidthWithBuffer === this._wrapperWidthWithBuffer) {
-			return;
-		}
-		this._wrapperWidthWithBuffer = observedWidthWithBuffer;
-		this.marqueeService.updateWidth(this._wrapperWidthWithBuffer);
-		this._updateMarquee();
-	}
-
-	private _updateMarquee() {
-		this._setRenderedImages(this._wrapperWidthWithBuffer);
-	}
-
-	private _setRenderedImages(newWidth: number) {
-		this.renderedImages = this.marqueeService.updateRenderedArray();
+		this._resizeObserver.observe(container);
 		this.cdr.detectChanges();
 	}
 
-	pause(): any {
-		this._paused = !this._paused;
-		// const marquee = this.marquee.nativeElement as HTMLElement;
-		// marquee.style.animationPlayState = 'paused';
-		this.pauseText = this._paused ? 'play' : 'pause';
+	private _clearContainer(container: HTMLElement) {
+		while (container.firstChild) {
+			this.renderer.removeChild(container, container.firstChild);
+		}
+	}
+
+	private _updateWidthValue(widthWithBuffer: number) {
+		if (this._containerWidthWithBuffer === widthWithBuffer) {
+			return;
+		}
+		this._containerWidthWithBuffer = widthWithBuffer;
+	}
+
+	private _updateMarquee() {
+		const updatedRenderedArray: RenderedImage[] = this._updateRenderedArray();
+		this._updateImages(this._container, updatedRenderedArray);
+		// this.cdr.detectChanges();
+	}
+
+	public toggleDirection() {
+		this.reverse = !this.reverse;
+	}
+
+	public devToggelePause() {
+		this.isPaused = !this.isPaused;
+	}
+
+	public togglePause(pauseAnimation: boolean) {
+		this.isPaused = pauseAnimation ? true : false;
 	}
 
 	ngOnDestroy(): void {
-		this._destroy$.next();
-		this._destroy$.complete();
-		if (this._intersectionObserver) {
-			this._intersectionObserver.disconnect();
-			this._intersectionObserver = null;
-		}
-		if (this._resizeObserver) {
-			this._resizeObserver.disconnect();
-		}
+		clearTimeout(this._timeoutId);
+		cancelAnimationFrame(this._animationFrameId);
+		this.cdr.detach();
 	}
 }
